@@ -1,32 +1,33 @@
-DROP PROCEDURE IF EXISTS ComputeAverageWeightedScoreForUser;
-DELIMITER $$
-CREATE PROCEDURE ComputeAverageWeightedScoreForUser (user_id INT)
+/*
+Task: Create a stored procedure ComputeAverageWeightedScoreForUser that computes and stores the average weighted score for a student
+*/
+
+-- Create stored procedure ComputeAverageWeightedScoreForUser
+DELIMITER //
+CREATE PROCEDURE ComputeAverageWeightedScoreForUser (
+    IN p_user_id INT
+)
 BEGIN
-    DECLARE total_weighted_score INT DEFAULT 0;
-    DECLARE total_weight INT DEFAULT 0;
-
-    SELECT SUM(corrections.score * projects.weight)
-        INTO total_weighted_score
-        FROM corrections
-            INNER JOIN projects
-                ON corrections.project_id = projects.id
-        WHERE corrections.user_id = user_id;
-
-    SELECT SUM(projects.weight)
-        INTO total_weight
-        FROM corrections
-            INNER JOIN projects
-                ON corrections.project_id = projects.id
-        WHERE corrections.user_id = user_id;
-
-    IF total_weight = 0 THEN
-        UPDATE users
-            SET users.average_score = 0
-            WHERE users.id = user_id;
+    DECLARE total_score DECIMAL(10,2);
+    DECLARE total_weight DECIMAL(10,2);
+    DECLARE avg_weighted_score DECIMAL(10,2);
+    
+    -- Compute total score and total weight
+    SELECT SUM(score * weight), SUM(weight)
+    INTO total_score, total_weight
+    FROM corrections
+    WHERE user_id = p_user_id;
+    
+    -- Calculate average weighted score
+    IF total_weight > 0 THEN
+        SET avg_weighted_score = total_score / total_weight;
     ELSE
-        UPDATE users
-            SET users.average_score = total_weighted_score / total_weight
-            WHERE users.id = user_id;
+        SET avg_weighted_score = 0;
     END IF;
-END $$
+    
+    -- Update or insert average weighted score for the student
+    INSERT INTO average_weighted_scores (user_id, score) VALUES (p_user_id, avg_weighted_score)
+    ON DUPLICATE KEY UPDATE score = avg_weighted_score;
+END;
+//
 DELIMITER ;
