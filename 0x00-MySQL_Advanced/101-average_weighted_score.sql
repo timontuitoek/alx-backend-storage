@@ -1,28 +1,33 @@
-/*
-Task: Create a stored procedure ComputeAverageWeightedScoreForUsers that computes and stores the average weighted score for all students
-*/
-
--- Create stored procedure ComputeAverageWeightedScoreForUsers
-DELIMITER //
+DROP PROCEDURE IF EXISTS ComputeAverageWeightedScoreForUsers;
+DELIMITER $$
 CREATE PROCEDURE ComputeAverageWeightedScoreForUsers ()
 BEGIN
-    DECLARE done INT DEFAULT FALSE;
-    DECLARE user_id_var INT;
-    DECLARE cur CURSOR FOR SELECT id FROM users;
-    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
-    
-    -- Loop through all users
-    OPEN cur;
-    read_loop: LOOP
-        FETCH cur INTO user_id_var;
-        IF done THEN
-            LEAVE read_loop;
-        END IF;
-        
-        -- Call ComputeAverageWeightedScoreForUser for each user
-        CALL ComputeAverageWeightedScoreForUser(user_id_var);
-    END LOOP;
-    CLOSE cur;
-END;
-//
+    ALTER TABLE users ADD total_weighted_score INT NOT NULL;
+    ALTER TABLE users ADD total_weight INT NOT NULL;
+
+    UPDATE users
+        SET total_weighted_score = (
+            SELECT SUM(corrections.score * projects.weight)
+            FROM corrections
+                INNER JOIN projects
+                    ON corrections.project_id = projects.id
+            WHERE corrections.user_id = users.id
+            );
+
+    UPDATE users
+        SET total_weight = (
+            SELECT SUM(projects.weight)
+                FROM corrections
+                    INNER JOIN projects
+                        ON corrections.project_id = projects.id
+                WHERE corrections.user_id = users.id
+            );
+
+    UPDATE users
+        SET users.average_score = IF(users.total_weight = 0, 0, users.total_weighted_score / users.total_weight);
+    ALTER TABLE users
+        DROP COLUMN total_weighted_score;
+    ALTER TABLE users
+        DROP COLUMN total_weight;
+END $$
 DELIMITER ;
