@@ -3,19 +3,24 @@ Task: Create a stored procedure ComputeAverageScoreForUser that computes and sto
 */
 
 -- Create stored procedure ComputeAverageScoreForUser
-DELIMITER //
-CREATE PROCEDURE ComputeAverageScoreForUser (
-    IN p_user_id INT
-)
+DROP PROCEDURE IF EXISTS ComputeAverageScoreForUser;
+DELIMITER $$
+CREATE PROCEDURE ComputeAverageScoreForUser (user_id INT)
 BEGIN
-    DECLARE avg_score DECIMAL(10,2);
-    
-    -- Compute average score for the student
-    SELECT AVG(score) INTO avg_score FROM corrections WHERE user_id = p_user_id;
-    
-    -- Update or insert average score for the student
-    INSERT INTO average_scores (user_id, score) VALUES (p_user_id, avg_score)
-    ON DUPLICATE KEY UPDATE score = avg_score;
-END;
-//
+    DECLARE total_score INT DEFAULT 0;
+    DECLARE projects_count INT DEFAULT 0;
+
+    SELECT SUM(score)
+        INTO total_score
+        FROM corrections
+        WHERE corrections.user_id = user_id;
+    SELECT COUNT(*)
+        INTO projects_count
+        FROM corrections
+        WHERE corrections.user_id = user_id;
+
+    UPDATE users
+        SET users.average_score = IF(projects_count = 0, 0, total_score / projects_count)
+        WHERE users.id = user_id;
+END $$
 DELIMITER ;
