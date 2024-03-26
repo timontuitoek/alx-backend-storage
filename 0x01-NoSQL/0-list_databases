@@ -20,4 +20,3 @@ def list_databases():
 
 if __name__ == "__main__":
     list_databases()
-q
